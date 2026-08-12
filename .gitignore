@@ -1,0 +1,9 @@
+# Never commit real secrets — only the .env.example templates are tracked.
+.env
+*/.env
+
+# Local/runtime noise
+*.log
+*.output
+*.sql
+*.bak

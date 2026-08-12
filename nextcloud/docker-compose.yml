@@ -1,0 +1,83 @@
+#
+# Nextcloud stack (Docker Desktop / WSL2 backend) — the "OneDrive-like" cloud.
+#   - User FILES live on H: (H:\NextcloudData), directly browsable on disk.
+#   - DATABASE (MariaDB) lives in a Docker-managed named volume, NOT on H:, so an
+#     H: unplug never corrupts the DB (same principle as Immich's Postgres).
+#   - App code/config in a named volume. Reached on port 8080 (LAN + Tailscale).
+#
+# Ops: run docker commands from F:\nextcloud. See README-nextcloud.md.
+#
+
+name: nextcloud
+
+services:
+  nextcloud-db:
+    container_name: nextcloud_db
+    image: mariadb:lts
+    restart: always
+    # Nextcloud-recommended MariaDB flags
+    command:
+      - "--transaction-isolation=READ-COMMITTED"
+      - "--log-bin=binlog"
+      - "--binlog-format=ROW"
+    volumes:
+      - db:/var/lib/mysql            # Docker-managed volume "nextcloud_db"
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MYSQL_DATABASE}
+      MARIADB_USER: ${MYSQL_USER}
+      MARIADB_PASSWORD: ${MYSQL_PASSWORD}
+      MARIADB_AUTO_UPGRADE: "1"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+
+  nextcloud-redis:
+    container_name: nextcloud_redis
+    image: redis:7-alpine
+    restart: always
+    command: ["redis-server", "--save", "60", "1"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+
+  nextcloud-app:
+    container_name: nextcloud_app
+    image: nextcloud:stable-apache
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      nextcloud-db:
+        condition: service_healthy
+      nextcloud-redis:
+        condition: service_healthy
+    volumes:
+      - nextcloud:/var/www/html                 # app code + config (named volume)
+      - ${NEXTCLOUD_DATA}:/var/www/html/data     # user files on H: (browsable on disk)
+    environment:
+      MYSQL_HOST: nextcloud-db
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: nextcloud-redis
+      NEXTCLOUD_TRUSTED_DOMAINS: ${TRUSTED_DOMAINS}
+      PHP_TZ: ${TZ}
+      # Allow large phone-file uploads
+      PHP_UPLOAD_LIMIT: 16G
+      PHP_MEMORY_LIMIT: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/status.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+volumes:
+  db:
+    name: nextcloud_db
+  nextcloud:
+    name: nextcloud_app
