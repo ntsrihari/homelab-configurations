@@ -12,7 +12,7 @@ becomes a secondary copy/backup target.
 Windows 11 PC (Ryzen 5 5600X, 32GB, RTX 4070)  LAN 192.168.29.96/24
 │
 ├─ Docker Desktop (WSL2 backend)
-│   └─ compose project "immich"  (F:\immich\docker-compose.yml + .env)
+│   └─ compose project "immich"  (F:\homelab\immich\docker-compose.yml + .env)
 │        ├─ immich_server            :2283  → http://192.168.29.96:2283
 │        ├─ immich_machine_learning
 │        ├─ immich_redis   (valkey)
@@ -29,13 +29,13 @@ forwarding, no public exposure.
 
 | Thing | Value |
 |-------|-------|
-| Compose file | `F:\immich\docker-compose.yml` |
-| Environment file | `F:\immich\.env` |
+| Compose file | `F:\homelab\immich\docker-compose.yml` |
+| Environment file | `F:\homelab\immich\.env` |
 | Immich-managed storage (UPLOAD_LOCATION) | `I:\ImmichData`  → container `/data` (on the external drive, by choice) |
 | External library source | `I:\Photos` (read-only) → container `/mnt/photos` |
 | External library import path (enter in UI) | `/mnt/photos` |
 | Postgres storage | Docker-managed volume **`immich_pgdata`** (never NTFS) |
-| DB password | in `F:\immich\.env` (`DB_PASSWORD`) — **back this up** |
+| DB password | in `F:\homelab\immich\.env` (`DB_PASSWORD`) — **back this up** |
 | Timezone | `Asia/Kolkata` |
 | Immich version | pinned `v3.1.0` in `.env` |
 | LAN URL | `http://192.168.29.96:2283` |
@@ -105,10 +105,10 @@ If this fragility becomes annoying, moving `UPLOAD_LOCATION` to `C:\ImmichData`
 
 ## 7. Start / stop / restart / status
 
-Run from `F:\immich` (PowerShell):
+Run from `F:\homelab\immich` (PowerShell):
 
 ```
-cd F:\immich
+cd F:\homelab\immich
 docker compose ps            # status + health
 docker compose up -d         # start (create/refresh containers)
 docker compose stop          # stop containers, keep them
@@ -124,7 +124,7 @@ Never run `docker compose down -v` unless you intend to destroy the database vol
 ## 8. Update Immich
 
 ```
-cd F:\immich
+cd F:\homelab\immich
 # 1) (recommended) back up the DB first — see §9
 # 2) edit .env: set IMMICH_VERSION to the new release tag (e.g. v3.2.0)
 docker compose pull
@@ -145,7 +145,7 @@ distinct data sets exist:
    *links* to both `/data` and `/mnt/photos`. Recreatable ML/thumbs are NOT in here, but
    everything that makes the library "yours" is. Dump it:
    ```
-   cd F:\immich
+   cd F:\homelab\immich
    docker compose exec -T database pg_dumpall --clean --if-exists -U postgres > immich-db-backup.sql
    ```
 3. **Immich-managed media — `I:\ImmichData`.** This holds:
@@ -155,14 +155,14 @@ distinct data sets exist:
      saves time.
 
 **Complete backup = (1) your I:\Photos routine  +  (2) a pg_dumpall  +  (3) I:\ImmichData\library**
-(plus optionally the rest of I:\ImmichData and the `F:\immich` config folder incl. `.env`).
+(plus optionally the rest of I:\ImmichData and the `F:\homelab\immich` config folder incl. `.env`).
 
-Also keep a copy of **`F:\immich\.env`** (holds `DB_PASSWORD`) and `docker-compose.yml`.
+Also keep a copy of **`F:\homelab\immich\.env`** (holds `DB_PASSWORD`) and `docker-compose.yml`.
 
 ## 10. Migration plan to Ubuntu (future primary)
 
 What actually needs to move:
-- **Config:** `F:\immich\docker-compose.yml` + `.env` → copy to the Ubuntu host, adjust
+- **Config:** `F:\homelab\immich\docker-compose.yml` + `.env` → copy to the Ubuntu host, adjust
   paths (`UPLOAD_LOCATION=/srv/immich/data`, `EXTERNAL_LIBRARY=/srv/photos`, etc.).
 - **Database (required, not recreatable):** `pg_dumpall` on Windows → restore into the
   fresh Postgres on Ubuntu:
@@ -224,7 +224,7 @@ empty folder, the server **crash-loops** with `Failed to read .../.immich` (a sa
 so it never writes into a wrong/unmounted path). To relocate correctly:
 
 ```
-cd F:\immich
+cd F:\homelab\immich
 docker compose stop immich-server
 # copy the ENTIRE existing store (incl. hidden .immich markers + all data) to the new path
 robocopy <OLD_UPLOAD_LOCATION> <NEW_UPLOAD_LOCATION> /E
@@ -247,6 +247,6 @@ Example to move back to internal C: →
 - **Heaviest load is the one-time initial import** (thumbnails + face/CLIP indexing of your
   20k photos). To go easy on the CPU during it: Immich → Administration → Settings → **Job
   Concurrency** and lower Thumbnail Generation / Smart Search / Face Detection concurrency.
-- **During intense sessions** you can also just pause Immich: `cd F:\immich; docker compose stop`
+- **During intense sessions** you can also just pause Immich: `cd F:\homelab\immich; docker compose stop`
   then `docker compose start` afterwards. Phone backups resume when it's back up.
 - Lower `processors=4` in `.wslconfig` if you ever feel in-game stutter during an import.
