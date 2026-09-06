@@ -1,0 +1,27 @@
+#
+# Jellyfin — movies / TV media server. Kept completely separate from Immich.
+#   - Media lives on H:\Media (Movies, Shows), mounted READ-ONLY.
+#   - Immich has NO mount to H:\Media, so these never appear in Immich.
+#   - Config/metadata in Docker named volumes (not on H:).
+# Web UI on port 8096. Ops from F:\homelab\jellyfin.
+#
+name: jellyfin
+
+services:
+  jellyfin:
+    container_name: jellyfin
+    image: jellyfin/jellyfin:latest
+    restart: always
+    ports:
+      - "8096:8096"
+    volumes:
+      - jellyfin_config:/config
+      - jellyfin_cache:/cache
+      - "H:/Media:/media:ro"        # Movies + Shows, read-only. NOT Immich data.
+    environment:
+      TZ: Asia/Kolkata
+      JELLYFIN_PublishedServerUrl: http://192.168.29.96:8096
+
+volumes:
+  jellyfin_config:
+  jellyfin_cache:

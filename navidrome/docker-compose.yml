@@ -1,0 +1,28 @@
+#
+# Navidrome — music streaming server. Kept completely separate from Immich.
+#   - Music lives on H:\Media\Music, mounted READ-ONLY.
+#   - Immich has NO mount here, and ignores audio files anyway — never appears in Immich.
+#   - Navidrome's own DB is in a Docker named volume (not on H:).
+# Web UI on port 4533. Ops from F:\homelab\navidrome.
+#
+name: navidrome
+
+services:
+  navidrome:
+    container_name: navidrome
+    image: deluan/navidrome:latest
+    restart: always
+    ports:
+      - "4533:4533"
+    environment:
+      ND_MUSICFOLDER: /music
+      ND_DATAFOLDER: /data
+      ND_SCANSCHEDULE: 1h
+      ND_LOGLEVEL: info
+      TZ: Asia/Kolkata
+    volumes:
+      - navidrome_data:/data
+      - "H:/Media/Music:/music:ro"   # read-only music. NOT Immich data.
+
+volumes:
+  navidrome_data:
